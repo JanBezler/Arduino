@@ -4,29 +4,17 @@
 #define clockPin 3
 #define latchPin 4
 
-
 #define backHcTriggPin 9
 #define backHcResponsePin 8
 #define frontHcTriggPin 7
 #define frontHcResponsePin 6
 #define frontServoPin 5
 
-const int direcrtionList[11] = {'q','w','e','a','s','d','z','x','c','r','t'};
-const bool dQ[8] = {1,0,0,0,1,0,0,0};
-const bool dW[8] = {1,0,1,0,1,0,1,0};
-const bool dE[8] = {0,0,1,0,0,0,1,0};
-const bool dA[8] = {1,0,0,1,1,0,0,1};
-const bool dS[8] = {0,0,0,0,0,0,0,0};
-const bool dD[8] = {0,1,1,0,0,1,1,0};
-const bool dZ[8] = {0,0,0,1,0,0,0,1};
-const bool dX[8] = {0,1,0,1,0,1,0,1};
-const bool dC[8] = {0,1,0,0,0,1,0,0};
-const bool dR[8] = {1,0,0,1,0,1,1,0};
-const bool dT[8] = {0,1,1,0,1,0,0,1};
-int currentDirection = 's';
-int currentSpeed = 160;
+ShiftRegisterPWM sr(1, 30);
 
-ShiftRegisterPWM sr(1, 16);
+int straightSpeed = 0;
+int turnSpeed = 0;
+unsigned short wheels[8] = {0,0,0,0,0,0,0,0};
 
 void setup()
 {
@@ -40,72 +28,89 @@ void setup()
   pinMode(frontServoPin, OUTPUT);
   pinMode(frontHcResponsePin, INPUT);
   pinMode(backHcResponsePin, INPUT);
-  sr.interrupt(ShiftRegisterPWM::UpdateFrequency::Slow);
+  sr.interrupt(ShiftRegisterPWM::UpdateFrequency::SuperFast);
   for (int i=0;i<8;i++)
   {
     sr.set(i,0);
   }
+  Serial.setTimeout(10);
 }
 
-
-void goInDirectionPWM()
+void setWheelsSpeed()
 {
-  const bool *arr;
-  switch (currentDirection)
+  short left = straightSpeed + turnSpeed;
+  short right = straightSpeed - turnSpeed;
+
+  if (left > 255) left = 255;
+  else if (left < -255) left = -255; 
+  if (right > 255) right = 255;
+  else if (right < -255) right = -255; 
+
+  if (left < 0)
   {
-    case 'q': arr = dQ; break;
-    case 'w': arr = dW; break;
-    case 'e': arr = dE; break;
-    case 'a': arr = dA; break;
-    case 's': arr = dS; break;
-    case 'd': arr = dD; break;
-    case 'z': arr = dZ; break;
-    case 'x': arr = dX; break;
-    case 'c': arr = dC; break;
-    case 'r': arr = dR; break;
-    case 't': arr = dT; break;
+      wheels[3] = left;
+      wheels[5] = left;
+      wheels[2] = 0;
+      wheels[4] = 0;
+  }
+  else
+  {
+      wheels[2] = left;
+      wheels[4] = left;
+      wheels[3] = 0;
+      wheels[5] = 0;
   }
 
-
-  for (int i=0;i<8;i++)
+  if (right < 0)
   {
-    sr.set(i,currentSpeed*arr[i]);
-    Serial.print(arr[i]*currentSpeed);
-    Serial.print(" ");
+      wheels[1] = right;
+      wheels[7] = right;
+      wheels[0] = 0;
+      wheels[6] = 0;
   }
-  Serial.println();
-  
+  else
+  {
+      wheels[0] = right;
+      wheels[6] = right;
+      wheels[1] = 0;
+      wheels[7] = 0;
+  }
 }
 
-
-int readInput()
+void applyChangesOnWheels()
 {
-  int input = Serial.read();
-
-  for (int i=0; i<11; i++){
-    if (input == direcrtionList[i]) currentDirection = input;
+   for (int i=0;i<8;i++)
+  {
+    sr.set(i,wheels[i]);
   }
-  if ((input>='1') && (input<='5')) currentSpeed = (input-49)*30+135;  
+}
+
+void readInput()
+{
+  while(Serial.available() > 0 )
+  {
+    String str = Serial.readString();
+    Serial.println(str);
+    char typeOfData = str[0];
+    String strvalue = "";
+
+    for (int i=0; i<str.length(); i++)
+    {
+      if (i>0) strvalue += str[i];
+    }
+    int value = strvalue.toInt();
+    
+    if(typeOfData == 's') straightSpeed = value;
+    else if (typeOfData == 't') turnSpeed = value;
+   
+  }  
 }
 
 
 void loop() 
 {
-  int oldDirection = currentDirection;
-  int oldSpeed = currentSpeed;
-  
   readInput();
-  if ((oldDirection != currentDirection) || (oldSpeed != currentSpeed))
-  {
-    /*
-    Serial.println();
-    Serial.print("Direction: ");
-    Serial.print(char(currentDirection));
-    Serial.print(" | ");
-    Serial.print("Speed: ");
-    Serial.println(currentSpeed);
-    */
-    goInDirectionPWM();
-  }
+  setWheelsSpeed();
+  applyChangesOnWheels();
 
 }
