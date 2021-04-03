@@ -1,11 +1,15 @@
 #include "PPMEncoder.h"
 
+#define MAX 1950
+#define MIN 980
+#define MID (MAX-MIN)/2+MIN
+
 #define OUTPUT_PIN 10
 #define BUZZER_PIN 8
 
 #define Y_PIN A0
-#define T_PIN A1
-#define R_PIN A2
+#define T_PIN A2
+#define R_PIN A1
 #define P_PIN A3
 
 #define B1_PIN 2
@@ -22,7 +26,7 @@
 #define GPS_RTH 1750
 #define UNDEFINED_YET 1917
    
-int deadField = 20;
+int deadField = 0;
 int currentMode = DISARM;
 unsigned long triggerTime = 0;
 
@@ -41,15 +45,21 @@ void setup() {
   pinMode(BUZZER_PIN, OUTPUT);
 
   ppmEncoder.begin(OUTPUT_PIN);
-  Serial.begin(9600);
+  
+  ppmEncoder.setChannel(0, MID);
+  ppmEncoder.setChannel(1, MID);
+  ppmEncoder.setChannel(2, MID);
+  ppmEncoder.setChannel(3, MID);
+  ppmEncoder.setChannel(4, DISARM);
 }
 
-int readAnalog(int pin)
+int readAnalog(int pin, bool reverse)
 {
   int sensorValue = analogRead(pin);
-  sensorValue = map(sensorValue, 0, 1023, 500, 2500);
+  if (reverse) sensorValue = map(sensorValue, 0, 1023, MAX, MIN);
+  else sensorValue = map(sensorValue, 0, 1023, MIN, MAX);
   
-  if (abs(sensorValue - 1500) <= deadField) sensorValue = 0;
+  if (abs(sensorValue - MID) <= deadField) sensorValue = MID;
 
   return sensorValue;
 }
@@ -73,28 +83,18 @@ void updateMode()
     triggerTime = millis();
   }
 }
-
+ 
 void loop() {
 
   updateMode();
   
   if (millis() - triggerTime < 200) digitalWrite(BUZZER_PIN, true);
   else digitalWrite(BUZZER_PIN, false);
-  
-  ppmEncoder.setChannel(0, readAnalog(P_PIN));
-  ppmEncoder.setChannel(1, readAnalog(R_PIN));
-  ppmEncoder.setChannel(2, readAnalog(T_PIN));
-  ppmEncoder.setChannel(3, readAnalog(Y_PIN));
-  ppmEncoder.setChannel(4, map(currentMode, 1000, 2000, 500, 2500));
 
-  Serial.print(readAnalog(P_PIN));
-  Serial.print("  ");
-  Serial.print(readAnalog(R_PIN));
-  Serial.print("  ");
-  Serial.print(readAnalog(T_PIN));
-  Serial.print("  ");
-  Serial.print(readAnalog(Y_PIN));
-  Serial.print(" | ");
-  Serial.println(currentMode);
+  ppmEncoder.setChannel(0, readAnalog(R_PIN, true)+1);
+  ppmEncoder.setChannel(1, readAnalog(P_PIN, false)+72);
+  ppmEncoder.setChannel(2, readAnalog(T_PIN, false)-9);
+  ppmEncoder.setChannel(3, readAnalog(Y_PIN, false)+1);
+  ppmEncoder.setChannel(4, map(currentMode, 1000, 2000, MIN, MAX)+30);
 
 }
