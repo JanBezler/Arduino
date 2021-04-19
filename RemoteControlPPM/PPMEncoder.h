@@ -7,7 +7,7 @@
 #include "WProgram.h"
 #endif
 
-#define PPM_DEFAULT_CHANNELS 5
+#define PPM_DEFAULT_CHANNELS 6
 
 #define PPM_PULSE_LENGTH_uS 500
 #define PPM_FRAME_LENGTH_uS 22500

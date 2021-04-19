@@ -31,6 +31,7 @@ int currentMode = DISARM;
 unsigned long triggerTime = 0;
 
 void setup() {
+  Serial.begin(9600);
   pinMode(Y_PIN, INPUT);
   pinMode(T_PIN, INPUT);
   pinMode(R_PIN, INPUT);
@@ -50,7 +51,8 @@ void setup() {
   ppmEncoder.setChannel(1, MID);
   ppmEncoder.setChannel(2, MID);
   ppmEncoder.setChannel(3, MID);
-  ppmEncoder.setChannel(4, DISARM);
+  ppmEncoder.setChannel(4, currentMode);
+  ppmEncoder.setChannel(5, currentMode);
 }
 
 int readAnalog(int pin, bool reverse)
@@ -66,12 +68,12 @@ int readAnalog(int pin, bool reverse)
 
 int readMode()
 {
-  if (digitalRead(B2_PIN)) return DISARM;
-  else if (digitalRead(B3_PIN)) return HORIZON;
-  else if (digitalRead(B4_PIN)) return GPS_HOLD;
-  else if (digitalRead(B6_PIN)) return GPS_MISSION;
+  if (digitalRead(B1_PIN)) return DISARM;
+  else if (digitalRead(B2_PIN)) return HORIZON;
+  else if (digitalRead(B3_PIN)) return GPS_HOLD;
+  else if (digitalRead(B4_PIN)) return GPS_MISSION;
   else if (digitalRead(B5_PIN)) return GPS_RTH;
-  //else if (digitalRead(B6_PIN)) return UNDEFINED_YET;
+  else if (digitalRead(B6_PIN)) return UNDEFINED_YET;
 }
 
 void updateMode()
@@ -95,6 +97,8 @@ void loop() {
   ppmEncoder.setChannel(1, readAnalog(P_PIN, false)+72);
   ppmEncoder.setChannel(2, readAnalog(T_PIN, false)-9);
   ppmEncoder.setChannel(3, readAnalog(Y_PIN, false)+1);
-  ppmEncoder.setChannel(4, map(currentMode, 1000, 2000, MIN, MAX)+30);
+  ppmEncoder.setChannel(4, currentMode+30);
+  ppmEncoder.setChannel(5, currentMode+30);
+  Serial.println(currentMode);
 
 }
